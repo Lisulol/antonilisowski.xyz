@@ -6,6 +6,7 @@ import { DoorOpen, Power } from "lucide-react"
 import Window from "@/components/Window/window"
 import Link from "next/link"
 import { GitHubCalendar } from "react-github-calendar"
+import { Octokit } from "octokit"
 
 export default function HomePage() {
   const [openAbout, setOpenAbout] = useState(false)
@@ -14,26 +15,37 @@ export default function HomePage() {
   const clickCountRef = useRef<Record<string, number>>({})
   const clickTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({})
   const dragDistanceRef = useRef<Record<string, number>>({})
-  const [githubData, setGithubData] = useState<Record<string, number> | null>(
-    null
-  )
+  const [openRecycle, setOpenRecycle] = useState(false)
+  const [state2, setState2] = useState<"min" | "normal" | "max">("normal")
   const [ismax, setIsmax] = useState(false)
   const [repos, setRepos] = useState<any[]>([])
   const [state, setState] = useState<"min" | "normal" | "max">("normal")
   const [state1, setState1] = useState<"min" | "normal" | "max">("normal")
-
+  const [state3, setState3] = useState<"min" | "normal" | "max">("normal")
+  const [openProject, setOpenProject] = useState(false)
   const [languageCounts, setLanguageCounts] = useState<Record<string, number>>(
     {}
   )
+  const octokit = new Octokit({
+    auth: process.env.NEXT_PUBLIC_GITHUB_TOKEN,
+  })
+
   const items = [
     { id: "about", label: "About", icon: "/folder.png", x: 40, y: 60 },
     { id: "github", label: "Github", icon: "/folder.png", x: 120, y: 60 },
     {
-      id: "Recycle Bin",
+      id: "recycle",
       label: "Recycle Bin",
       icon: "/recycle-bin.png",
       x: 360,
       y: 70,
+    },
+    {
+      id: "projects",
+      label: "Projects",
+      icon: "/folder.png",
+      x: 200,
+      y: 60,
     },
   ]
   const [time, setTime] = useState<Date>(new Date())
@@ -60,16 +72,15 @@ export default function HomePage() {
   }, [])
 
   async function fetchGithubData() {
-    const res = await fetch(
-      "https://api.github.com/repos/Lisulol/PotBrewer/languages"
-    )
-    const data = await res.json()
-    const resrep = await fetch("https://api.github.com/users/Lisulol/repos")
-    const datarep = await resrep.json()
+    const resrep = await octokit.request("GET /users/{username}/repos", {
+      username: "Lisulol",
+      owner: "octokit",
+    })
+
+    const datarep = resrep.data
     console.log(datarep)
     setRepos(datarep)
     handlepercentage()
-    setGithubData(data)
   }
   useEffect(() => {
     handlepercentage()
@@ -80,8 +91,8 @@ export default function HomePage() {
     const totalBytes: Record<string, number> = {}
 
     for (const repo of repos) {
-      const res = await fetch(repo.languages_url)
-      const languages = await res.json()
+      const res = await octokit.request(`GET ${repo.languages_url}`)
+      const languages = res.data
       for (const [lang, bytes] of Object.entries(languages)) {
         totalBytes[lang] = (totalBytes[lang] || 0) + (bytes as number)
       }
@@ -113,6 +124,14 @@ export default function HomePage() {
         console.log("Opening github")
         setOpenGithub(true)
         setOpenMenu(false)
+      } else if (app === "recycle") {
+        console.log("Opening recycle bin")
+        setOpenRecycle(true)
+        setOpenMenu(false)
+      } else if (app === "projects") {
+        console.log("Opening projects")
+        setOpenProject(true)
+        setOpenMenu(false)
       }
     }
   }
@@ -140,13 +159,13 @@ export default function HomePage() {
       nodeRefMap.current[app.id] = node
     }
 
-    const handlePointerDown = (e: React.PointerEvent) => {
+    function handlePointerDown(e: React.PointerEvent) {
       startPosRef.current = { x: e.clientX, y: e.clientY }
       dragDistanceRef.current[app.id] = 0
       listeners?.onPointerDown?.(e as any)
     }
 
-    const handlePointerMove = (e: React.PointerEvent) => {
+    function handlePointerMove(e: React.PointerEvent) {
       if (startPosRef.current) {
         const distance = Math.sqrt(
           Math.pow(e.clientX - startPosRef.current.x, 2) +
@@ -157,7 +176,7 @@ export default function HomePage() {
       listeners?.onPointerMove?.(e as any)
     }
 
-    const handlePointerUp = (e: React.PointerEvent) => {
+    function handlePointerUp(e: React.PointerEvent) {
       listeners?.onPointerUp?.(e as any)
 
       const distance = dragDistanceRef.current[app.id] ?? 0
@@ -293,9 +312,27 @@ export default function HomePage() {
                     <DraggableIcon key={it.id} app={it} />
                   ))}
                 </div>
-                {openAbout && state1 !== "min" && (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-lg z-[200] overflow-auto">
+                {openRecycle && state2 !== "min" && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-lg z-200 overflow-auto">
                     <Window
+                      windowid={"Recycle Bin"}
+                      src="/recycle-bin.png"
+                      state={state2}
+                      setState={setState2}
+                      setOpen={setOpenRecycle}
+                    >
+                      <div className="text-black italic h-full w-full p-5 bg-[#eeeded]">
+                        <p>
+                          Here you should put this site, becouse it so trash
+                        </p>
+                      </div>
+                    </Window>
+                  </div>
+                )}
+                {openAbout && state1 !== "min" && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-lg z-200 overflow-auto">
+                    <Window
+                      src="/folder.png "
                       windowid={"About"}
                       state={state1}
                       setState={setState1}
@@ -315,16 +352,17 @@ export default function HomePage() {
                         <div className="w-full h-0.5 rounded-full mt-2 mb-2 bg-[#969696]" />
                         <p>
                           I mainly write in TypeScript and use Next.js for my
-                          projects as well as Tailwind for my frontend.
+                          projects as well as Tailwind for my CSS.
                         </p>
                       </div>
                     </Window>
                   </div>
                 )}
                 {openGithub && state !== "min" && (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-lg shadow-lg z-[200] overflow-auto">
+                  <div className="absolute inset-0 flex items-center justify-center rounded-lg shadow-lg z-200 overflow-auto">
                     <Window
                       windowid={"Github"}
+                      src="/folder.png"
                       state={state}
                       setState={setState}
                       setOpen={setOpenGithub}
@@ -380,6 +418,67 @@ export default function HomePage() {
                     </Window>
                   </div>
                 )}
+                {openProject && state3 !== "min" && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-lg shadow-lg z-200 overflow-hidden">
+                    <Window
+                      windowid={"Projects"}
+                      src="/folder.png"
+                      state={state3}
+                      setState={setState3}
+                      setOpen={setOpenProject}
+                    >
+                      <div
+                        style={{
+                          height: state3 === "max" ? "100%" : "500px",
+                        }}
+                        className="text-black italic  w-full p-5 bg-[#eeeded] overflow-auto"
+                      >
+                        <p className="text-2xl  font-bold mb-4">Projects</p>
+                        <p>Here are some of my projects</p>
+
+                        {Array.isArray(repos) &&
+                          repos
+                            .filter(
+                              (repo) =>
+                                repo.id !== 1074192965 &&
+                                repo.id !== 1074186020 &&
+                                repo.id !== 1102549073
+                            )
+                            .map((repo) => (
+                              <div
+                                key={repo.id}
+                                className="border flex justify-between p-5 mb-2"
+                              >
+                                <div className="flex">
+                                  <a
+                                    href={repo.html_url}
+                                    target="_blank"
+                                    className="text-[#0151ff] hover:underline"
+                                  >
+                                    {repo.name}
+                                  </a>
+                                  <p>: {repo.description}</p>
+                                </div>
+                                <p className="gap-5 flex">
+                                  <span className="flex ">
+                                    Main Language :
+                                    <span className="text-amber-400">
+                                      {repo.language}
+                                    </span>
+                                  </span>
+                                  <span className="flex">
+                                    Last Updated :{" "}
+                                    <span className="text-gray-600">
+                                      {repo.updated_at.split("T")[0]}
+                                    </span>
+                                  </span>
+                                </p>
+                              </div>
+                            ))}
+                      </div>
+                    </Window>
+                  </div>
+                )}
                 {openMenu && (
                   <div
                     className="pointer-events-none absolute inset-0 flex items-end justify-start z-120"
@@ -387,7 +486,7 @@ export default function HomePage() {
                   >
                     <div className="pointer-events-auto flex h-3/5 w-2/5 bg-[#eeeded] border-2 border-[#000d58] rounded-tr-xl shadow-2xl">
                       <div className="w-full h-full flex rounded-tr-xl flex-col justify-between">
-                        <div className="w-full h-2/12 bg-linear-to-b from-[#0105ff] via-[#019aff] to-[#00abfa]">
+                        <div className="w-full rounded-tr-lg h-2/12 bg-linear-to-b from-[#0105ff] via-[#019aff] to-[#00abfa]">
                           <div className="h-full w-full flex gap-5 items-center p-1">
                             <img src="/ico.png" className="w-[10%]" />
                             <p className="italic text-3xl text-white">You</p>
@@ -409,7 +508,7 @@ export default function HomePage() {
                               <p>Contact Me</p>
                             </Link>
                           </div>
-                          <div className="w-1/2 h-full  p-10 bg-[#85c7fd] flex flex-col  gap-10">
+                          <div className="w-1/2 h-full  p-10 bg-[#85c7fd] flex flex-col items-start gap-10">
                             <div
                               onClick={handleDoubleClick("about")}
                               className="italics hover:underline w-5 h-5 flex  items-center justify-center"
@@ -429,6 +528,26 @@ export default function HomePage() {
                                 className="w-8 inline-block mr-2"
                               />
                               <p>Github</p>
+                            </div>
+                            <div
+                              onClick={handleDoubleClick("projects")}
+                              className="italics hover:underline w-5 h-5 flex  items-center justify-center"
+                            >
+                              <img
+                                src="/folder.png"
+                                className="w-8 inline-block mr-2"
+                              />
+                              <p>Projects</p>
+                            </div>
+                            <div
+                              onClick={handleDoubleClick("recycle")}
+                              className="italics hover:underline w-5 h-5 flex  items-center justify-center"
+                            >
+                              <img
+                                src="/recycle-bin.png"
+                                className="w-8 inline-block mr-2"
+                              />
+                              <p>Recycle BIn</p>
                             </div>
                           </div>
                         </div>
@@ -516,13 +635,51 @@ export default function HomePage() {
                     </div>
                   </div>
                 )}
+                {openRecycle && (
+                  <div
+                    style={{
+                      backgroundColor:
+                        state2 === "min" ? "#498af2" : "transparent",
+                    }}
+                    onClick={() => {
+                      handleDoubleClick("recycle")
+                      setState2("normal")
+                    }}
+                    className="relative group text-white w-10 italic rounded flex flex-col items-center justify-center p-1 cursor-pointer hover:bg-[#0180ff] transition-colors"
+                  >
+                    <img src="/recycle-bin.png" className="w-5 h-5" />
+                    <div className="absolute bottom-full mb-1 hidden group-hover:block bg-[#ffffcc] text-black text-xs px-2 py-1 rounded border border-black whitespace-nowrap">
+                      Recycle Bin
+                    </div>
+                  </div>
+                )}
+                {openProject && (
+                  <div
+                    style={{
+                      backgroundColor:
+                        state2 === "min" ? "#498af2" : "transparent",
+                    }}
+                    onClick={() => {
+                      handleDoubleClick("projects")
+                      setState3("normal")
+                    }}
+                    className="relative group text-white w-10 italic rounded flex flex-col items-center justify-center p-1 cursor-pointer hover:bg-[#0180ff] transition-colors"
+                  >
+                    <img src="/folder.png" className="w-5 h-5" />
+                    <div className="absolute bottom-full mb-1 hidden group-hover:block bg-[#ffffcc] text-black text-xs px-2 py-1 rounded border border-black whitespace-nowrap">
+                      Projects
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <div className="bg-linear-to-r from-[#00eeff] border-l-2 border-t-2 border-cyan-600 via-[#00d9ff] to-[#00a2ff] p-2  h-full flex items-center justify-center w-[15%] text-black font-mono font-bold">
-              {time.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              <p className="italic">
+                {time.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
             </div>
           </div>
         </div>

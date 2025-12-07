@@ -1,11 +1,9 @@
-"use client"
-import { useState } from "react"
-
 interface WindowProps {
   children: React.ReactNode
   windowid?: string
   setOpen: (open: boolean) => void
   state?: string
+  src?: string
   setState?: (state: "min" | "normal" | "max") => void
 }
 
@@ -15,6 +13,7 @@ export default function Window({
   windowid,
   state,
   setState,
+  src,
 }: WindowProps) {
   function handleResize() {
     if (!setState) return
@@ -48,7 +47,7 @@ export default function Window({
     >
       <div className="w-full gap-2 flex-row bg-linear-to-b from-[#0105ff] via-[#019aff] to-[#00abfa] h-[4%] border-b-2 p-2 items-center justify-between flex border-[#00abfa]">
         <div className="flex items-center gap-2">
-          <img className="w-5 h-5" src="/comp.png" alt="My Computer" />
+          <img className="w-5 h-5" src={src} alt="My Computer" />
           <p className="text-white italic">{windowid}</p>
         </div>
         <div className="flex flex-row gap-5">
