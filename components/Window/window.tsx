@@ -5,29 +5,41 @@ interface WindowProps {
   children: React.ReactNode
   windowid?: string
   setOpen: (open: boolean) => void
+  state?: string
+  setState?: (state: "min" | "normal" | "max") => void
 }
 
-export default function Window({ children, setOpen, windowid }: WindowProps) {
-  const [isMaximized, setIsMaximized] = useState(false)
-  const [langs, setLangs] = useState<any | null>(null)
-  const [langsLoading, setLangsLoading] = useState(false)
-  const [langsError, setLangsError] = useState<string | null>(null)
-
+export default function Window({
+  children,
+  setOpen,
+  windowid,
+  state,
+  setState,
+}: WindowProps) {
   function handleResize() {
-    if (isMaximized) {
-      setIsMaximized(false)
+    if (!setState) return
+    if (state === "max") {
+      setState("normal")
     } else {
-      setIsMaximized(true)
+      setState("max")
+    }
+  }
+  function handleMinimize() {
+    if (!setState) return
+    if (state === "min") {
+      setState("normal")
+    } else {
+      setState("min")
     }
   }
 
   return (
     <div
       style={{
-        width: isMaximized ? "100%" : "90%",
-        height: isMaximized ? "100%" : "",
-        top: isMaximized ? "0" : "25%",
-        left: isMaximized ? "0" : "5%",
+        width: state === "max" ? "100%" : "90%",
+        height: state === "max" ? "100%" : "",
+        top: state === "max" ? "0" : "25%",
+        left: state === "max" ? "0" : "5%",
         position: "absolute",
         transition:
           "top 260ms ease, left 260ms ease, width 260ms ease, height 260ms ease, border-radius 200ms ease",
@@ -40,7 +52,10 @@ export default function Window({ children, setOpen, windowid }: WindowProps) {
           <p className="text-white italic">{windowid}</p>
         </div>
         <div className="flex flex-row gap-5">
-          <div className="w-8 h-8 flex items-center justify-center bg-linear-to-b from-[#016fff] to-[#00abfa] rounded-md hover:bg-[#797979] border border-[#ffffff] text-[#ffffff] group transition-colors duration-150">
+          <div
+            onClick={handleMinimize}
+            className="w-8 h-8 flex items-center justify-center bg-linear-to-b from-[#016fff] to-[#00abfa] rounded-md hover:bg-[#797979] border border-[#ffffff] text-[#ffffff] group transition-colors duration-150"
+          >
             <p className="text-sm inline-block px-2 py-0.5 rounded group-hover:bg-[#474747] group-hover:text-white">
               -
             </p>
